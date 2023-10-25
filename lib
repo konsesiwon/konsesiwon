@@ -1,0 +1,50 @@
+ tx;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
+use fuel_vm::gas::GasCosts;
+use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
+use pkg::TestPassCondition;
+use pkg::{Built, BuiltPackage};
+use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
+use sway_core::BuildTarget;
+use sway_types::Span;
+
+/// The result of a `forc test` invocation.
+#[derive(Debug)]
+pub enum Tested {
+    Package(Box<TestedPackage>),
+    Workspace(Vec<TestedPackage>),
+}
+
+/// The result of testing a specific package.
+#[derive(Debug)]
+pub struct TestedPackage {
+    pub built: Box<pkg::BuiltPackage>,
+    /// The resulting `ProgramState` after executing the test.
+    pub tests: Vec<TestResult>,
+}
+
+#[derive(Debug)]
+pub struct TestDetails {
+    /// The file that contains the test function.
+    pub file_path: Arc<PathBuf>,
+    /// The line number for the test declaration.
+    pub line_number: usize,
+}
+
+/// The filter to be used to only run matching tests.
+#[derive(Debug, Clone)]
+pub struct TestFilter<'a> {
+    /// The phrase used for filtering, a `&str` searched/matched with test name.
+    pub filter_phrase: &'a str,
+    /// If set `true`, a complete "match" is required with test name for the test to be executed,
+    /// otherwise a test_name should "contain" the `filter_phrase`.
+    pub exact_match: bool,
+}
+
+/// The result of executing a single test within a single package.
+#[derive(Debug)]
+pub struct TestResult {
+    /// The name of the function.
+    pub name: String,
